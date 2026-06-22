@@ -11,7 +11,6 @@ app.get('/init', (req, res) => {
 app.post('/get-feature', (req, res) => {
     const { feature } = req.body;
 
-    // Скрытая функция перекраски структур
     if (feature === "color_structure") {
         return res.json({
             code: `
@@ -34,7 +33,6 @@ app.post('/get-feature', (req, res) => {
         });
     }
 
-    // Скрытая функция создания динамического предсказания клона
     if (feature === "create_prediction") {
         return res.json({
             code: `
@@ -72,7 +70,6 @@ app.post('/get-feature', (req, res) => {
                 clone:PivotTo(original:GetPivot())
                 clone.Parent = Workspace
                 
-                -- Build Part Cache
                 local parts = {}
                 if clone:IsA("BasePart") then table.insert(parts, clone) end
                 for _, d in ipairs(clone:GetDescendants()) do
@@ -116,7 +113,6 @@ app.post('/get-feature', (req, res) => {
         });
     }
 
-    // Скрытый основной цикл сканирования и удаления лазеров
     if (feature === "main_loop") {
         return res.json({
             code: `
@@ -214,10 +210,9 @@ app.post('/get-feature', (req, res) => {
 
                     task.wait(CONFIG.POLL_INTERVAL)
                 end
-            end
-        `
-    });
-}
+            `
+        });
+    }
 
     res.status(400).json({ error: "Feature not found" });
 });
