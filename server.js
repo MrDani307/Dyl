@@ -30,7 +30,7 @@ app.post('/get-feature', (req, res) => {
     if (feature === "ui_builder") {
         return res.json({
             code: `
-                local ScreenGui, Theme, Style, CONFIG, State, TweenService = ...
+                local ScreenGui, Theme, Style = ...
                 
                 local ShadowFrame = Instance.new("Frame")
                 ShadowFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -209,10 +209,256 @@ app.post('/get-feature', (req, res) => {
         });
     }
 
-    if (feature === "particle_system") {
+    if (feature === "toast_system") {
         return res.json({
             code: `
-                local ParticleCanvas, bgParticles, Theme, math_random, task_spawn, task_wait, UDim2, math_sin, math_clamp, TweenService = ...
+                local ScreenGui, Theme, Style, TweenService, task_wait, task_delay = ...
+                local ToastSystem = { queue = {}, active = false }
+                
+                function ToastSystem.process()
+                    if #ToastSystem.queue == 0 then ToastSystem.active = false return end
+                    ToastSystem.active = true
+                    local toast = table.remove(ToastSystem.queue, 1)
+                    local toastFrame = Instance.new("Frame")
+                    toastFrame.Parent = ScreenGui
+                    toastFrame.BackgroundColor3 = Theme.background
+                    toastFrame.BackgroundTransparency = 0.1
+                    toastFrame.BorderSizePixel = 0
+                    toastFrame.Position = UDim2.new(0.5, -100, 0, -50)
+                    toastFrame.Size = UDim2.new(0, 200, 0, 40)
+                    toastFrame.ZIndex = 100
+                    Style.applyCorner(toastFrame, 8)
+                    Style.applyStroke(toastFrame, toast.color, 1.5, 0.3)
+                    
+                    local toastText = Instance.new("TextLabel")
+                    toastText.Parent = toastFrame
+                    toastText.BackgroundTransparency = 1
+                    toastText.Size = UDim2.new(1, 0, 1, 0)
+                    toastText.Font = Enum.Font.GothamBold
+                    toastText.Text = toast.text
+                    toastText.TextColor3 = Theme.text
+                    toastText.TextSize = 12
+                    
+                    TweenService:Create(toastFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Position = UDim2.new(0.5, -100, 0, 20) }):Play()
+                    task_wait(toast.duration)
+                    TweenService:Create(toastFrame, TweenInfo.new(0.3), { Position = UDim2.new(0.5, -100, 0, -50), BackgroundTransparency = 1 }):Play()
+                    task_delay(0.3, function()
+                        toastFrame:Destroy()
+                        ToastSystem.process()
+                    end)
+                end
+
+                function ToastSystem.show(text, duration, color)
+                    duration = duration or 2
+                    color = color or Theme.primary
+                    table.insert(ToastSystem.queue, {text = text, duration = duration, color = color})
+                    if not ToastSystem.active then ToastSystem.process() end
+                end
+
+                return ToastSystem
+            `
+        });
+    }
+
+    if (feature === "constructors") {
+        return res.json({
+            code: `
+                local Theme, Style, TweenService = ...
+                local Utils = {}
+
+                function Utils.makeButton(parent, text, h, layoutOrder, color)
+                    color = color or Theme.primary
+                    local btn = Instance.new("TextButton")
+                    btn.Parent = parent
+                    btn.BackgroundColor3 = Theme.background
+                    btn.BackgroundTransparency = 0.82
+                    btn.Size = UDim2.new(1, 0, 0, h or 40)
+                    btn.Font = Enum.Font.GothamBold
+                    btn.Text = text
+                    btn.TextColor3 = Theme.text
+                    btn.TextSize = 13
+                    btn.BorderSizePixel = 0
+                    btn.AutoButtonColor = false
+                    btn.LayoutOrder = layoutOrder or 0
+                    Style.applyCorner(btn, 10)
+                    local stroke = Style.applyStroke(btn, color, 1, 0.6)
+                    
+                    local btnHL = Instance.new("Frame")
+                    btnHL.Parent = btn
+                    btnHL.BackgroundColor3 = color
+                    btnHL.BackgroundTransparency = 0.75
+                    btnHL.Position = UDim2.new(0.1, 0, 0, 2)
+                    btnHL.Size = UDim2.new(0.8, 0, 0, 2)
+                    btnHL.BorderSizePixel = 0
+                    Style.applyCorner(btnHL, 1)
+                    
+                    Style.applyHoverEffect(btn, stroke)
+                    Style.applyPressEffect(btn, btn.Size)
+                    return btn, stroke
+                end
+
+                function Utils.makeLabel(parent, text, posY)
+                    local lbl = Instance.new("TextLabel")
+                    lbl.Parent = parent
+                    lbl.BackgroundTransparency = 1
+                    lbl.Position = UDim2.new(0, 0, 0, posY)
+                    lbl.Size = UDim2.new(1, 0, 0, 14)
+                    lbl.Font = Enum.Font.Gotham
+                    lbl.Text = text
+                    lbl.TextColor3 = Color3.fromRGB(150, 170, 195)
+                    lbl.TextSize = 10
+                    lbl.TextXAlignment = Enum.TextXAlignment.Left
+                    return lbl
+                end
+
+                return Utils
+            `
+        });
+    }
+
+    if (feature === "palette_builder") {
+        return res.json({
+            code: `
+                local ScrollFrame, Theme, Style, TweenService, ALL_COLORS, COLOR_CELL = ...
+                return function(parentFrame)
+                    local container = Instance.new("Frame")
+                    container.Parent = parentFrame
+                    container.BackgroundTransparency = 1
+                    container.Size = UDim2.new(1, 0, 0, 140)
+                    container.Visible = false
+                    container.ClipsDescendants = true
+                    
+                    local rbBtn = Instance.new("TextButton")
+                    rbBtn.Parent = container
+                    rbBtn.BackgroundColor3 = Theme.background
+                    rbBtn.BackgroundTransparency = 0.82
+                    rbBtn.Size = UDim2.new(1, 0, 0, 26)
+                    rbBtn.Font = Enum.Font.GothamBold
+                    rbBtn.Text = "🌈  Rainbow"
+                    rbBtn.TextColor3 = Theme.text
+                    rbBtn.TextSize = 12
+                    rbBtn.BorderSizePixel = 0
+                    rbBtn.AutoButtonColor = false
+                    Style.applyCorner(rbBtn, 8)
+                    Style.applyStroke(rbBtn, Theme.primary, 1, 0.6)
+                    Style.applyHoverEffect(rbBtn)
+                    Style.applyPressEffect(rbBtn, rbBtn.Size)
+                    
+                    local arrowL = Instance.new("TextButton")
+                    arrowL.Parent = container
+                    arrowL.BackgroundColor3 = Theme.background
+                    arrowL.BackgroundTransparency = 0.82
+                    arrowL.Position = UDim2.new(0, 0, 0, 64)
+                    arrowL.Size = UDim2.new(0, 20, 0, 60)
+                    arrowL.Font = Enum.Font.GothamBold
+                    arrowL.Text = "<"
+                    arrowL.TextColor3 = Theme.text
+                    arrowL.TextSize = 12
+                    arrowL.BorderSizePixel = 0
+                    arrowL.AutoButtonColor = false
+                    Style.applyCorner(arrowL, 6)
+                    Style.applyHoverEffect(arrowL)
+                    
+                    local arrowR = Instance.new("TextButton")
+                    arrowR.Parent = container
+                    arrowR.BackgroundColor3 = Theme.background
+                    arrowR.BackgroundTransparency = 0.82
+                    arrowR.Position = UDim2.new(1, -20, 0, 64)
+                    arrowR.Size = UDim2.new(0, 20, 0, 60)
+                    arrowR.Font = Enum.Font.GothamBold
+                    arrowR.Text = ">"
+                    arrowR.TextColor3 = Theme.text
+                    arrowR.TextSize = 12
+                    arrowR.BorderSizePixel = 0
+                    arrowR.AutoButtonColor = false
+                    Style.applyCorner(arrowR, 6)
+                    Style.applyHoverEffect(arrowR)
+                    
+                    local clip = Instance.new("Frame")
+                    clip.Parent = container
+                    clip.Position = UDim2.new(0, 24, 0, 64)
+                    clip.Size = UDim2.new(1, -48, 0, 60)
+                    clip.BackgroundTransparency = 1
+                    clip.ClipsDescendants = true
+                    
+                    local grid = Instance.new("Frame")
+                    grid.Parent = clip
+                    grid.BackgroundTransparency = 1
+                    grid.Size = UDim2.new(0, 9999, 1, 0)
+                    
+                    local uiGrid = Instance.new("UIGridLayout")
+                    uiGrid.Parent = grid
+                    uiGrid.CellSize = UDim2.new(0, 24, 0, 24)
+                    uiGrid.CellPadding = UDim2.new(0, 3, 0, 3)
+                    uiGrid.FillDirectionMaxCells = 1
+                    uiGrid.FillDirection = Enum.FillDirection.Vertical
+                    
+                    local colorBtns = {}
+                    for _, color in ipairs(ALL_COLORS) do
+                        local cb = Instance.new("TextButton")
+                        cb.Parent = grid
+                        cb.BackgroundColor3 = color
+                        cb.Size = UDim2.new(0, 24, 0, 24)
+                        cb.Text = ""
+                        cb.BorderSizePixel = 0
+                        cb.AutoButtonColor = false
+                        Style.applyCorner(cb, 5)
+                        
+                        local tooltip = Instance.new("TextLabel")
+                        tooltip.Parent = cb
+                        tooltip.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+                        tooltip.Position = UDim2.new(0, 0, 0, -20)
+                        tooltip.Size = UDim2.new(1, 0, 0, 16)
+                        tooltip.Font = Enum.Font.Gotham
+                        tooltip.Text = string.format("#%02X%02X%02X", color.R * 255, color.G * 255, color.B * 255)
+                        tooltip.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        tooltip.TextSize = 8
+                        tooltip.Visible = false
+                        tooltip.ZIndex = 10
+                        Style.applyCorner(tooltip, 4)
+                        
+                        cb.MouseEnter:Connect(function()
+                            TweenService:Create(cb, TweenInfo.new(0.15), {Size = UDim2.new(0, 26, 0, 26)}):Play()
+                            tooltip.Visible = true
+                        end)
+                        cb.MouseLeave:Connect(function()
+                            TweenService:Create(cb, TweenInfo.new(0.15), {Size = UDim2.new(0, 24, 0, 24)}):Play()
+                            tooltip.Visible = false
+                        end)
+                        cb.InputBegan:Connect(function(i)
+                            if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then
+                                TweenService:Create(cb, TweenInfo.new(0.08), {Size = UDim2.new(0, 20, 0, 20)}):Play()
+                            end
+                        end)
+                        cb.InputEnded:Connect(function(i)
+                            if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then
+                                TweenService:Create(cb, TweenInfo.new(0.12), {Size = UDim2.new(0, 24, 0, 24)}):Play()
+                            end
+                        end)
+                        table.insert(colorBtns, {btn = cb, color = color})
+                    end
+                    
+                    local scrollOff = 0
+                    arrowL.MouseButton1Click:Connect(function()
+                        scrollOff = math.max(0, scrollOff - COLOR_CELL * 2)
+                        TweenService:Create(grid, TweenInfo.new(0.2, Enum.EasingStyle.Quart), { Position = UDim2.new(0, -scrollOff, 0, 0) }):Play()
+                    end)
+                    arrowR.MouseButton1Click:Connect(function()
+                        scrollOff = scrollOff + COLOR_CELL * 2
+                        TweenService:Create(grid, TweenInfo.new(0.2, Enum.EasingStyle.Quart), { Position = UDim2.new(0, -scrollOff, 0, 0) }):Play()
+                    end)
+                    
+                    return container, rbBtn, colorBtns
+                end
+            `
+        });
+    }
+
+    if (feature === "anims_and_loops") {
+        return res.json({
+            code: `
+                local ParticleCanvas, bgParticles, StatusPulse, Highlight, Frame, ShadowFrame, ScrollFrame, TweenService, Theme, math_random, task_spawn, task_wait, UDim2, math_sin, math_clamp = ...
+                
                 task_spawn(function()
                     local timeAcc = 0
                     while ParticleCanvas and ParticleCanvas.Parent do
@@ -234,6 +480,48 @@ app.post('/get-feature', (req, res) => {
                             end
                         end
                         task_wait(0.016)
+                    end
+                end)
+
+                task_spawn(function()
+                    while StatusPulse and StatusPulse.Parent do
+                        TweenService:Create(StatusPulse, TweenInfo.new(1), {
+                            Size = UDim2.new(3, 0, 3, 0), Position = UDim2.new(-1, 0, -1, 0), BackgroundTransparency = 1
+                        }):Play()
+                        task_wait(1)
+                        StatusPulse.Size = UDim2.new(1, 0, 1, 0)
+                        StatusPulse.Position = UDim2.new(0, 0, 0, 0)
+                        StatusPulse.BackgroundTransparency = 0.7
+                    end
+                end)
+
+                task_spawn(function()
+                    while Highlight and Highlight.Parent do
+                        TweenService:Create(Highlight, TweenInfo.new(2.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {BackgroundTransparency = 0.85}):Play()
+                        task_wait(2.5)
+                        TweenService:Create(Highlight, TweenInfo.new(2.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {BackgroundTransparency = 0.55}):Play()
+                        task_wait(2.5)
+                    end
+                end)
+
+                Frame.Position = UDim2.new(0.05, 0, 0.35, 20)
+                Frame.Size = UDim2.new(0, 175, 0, 0)
+                Frame.BackgroundTransparency = 1
+                
+                local introTweens = {
+                    TweenService:Create(Frame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0.05, 0, 0.35, 0), Size = UDim2.new(0, 175, 0, 260) }),
+                    TweenService:Create(Frame, TweenInfo.new(0.6), {BackgroundTransparency = 1}),
+                    TweenService:Create(ShadowFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0.05, 4, 0.35, 4), Size = UDim2.new(0, 175, 0, 260) }),
+                }
+                for _, tween in ipairs(introTweens) do tween:Play() end
+                ShadowFrame.Visible = true
+
+                task.delay(0.3, function()
+                    for _, child in ipairs(ScrollFrame:GetChildren()) do
+                        if child:IsA("TextButton") or child:IsA("Frame") then
+                            child.BackgroundTransparency = 1
+                            TweenService:Create(child, TweenInfo.new(0.3), {BackgroundTransparency = child:GetAttribute("OriginalTrans") or 0.82}):Play()
+                        end
                     end
                 end)
             `
