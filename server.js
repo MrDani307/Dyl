@@ -4,12 +4,68 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
+// Конфигурация скрытых данных сервера
+const COUNTER_URL = "https://script.google.com/macros/s/AKfycbwAaAoVS_HpdsIgaauLs0QG2U4DnRvTBfsEDJhl_eesoQ-7ahLqEm16_iWfh-ft-YY-/exec";
+
 app.get('/init', (req, res) => {
     res.json({ status: "ok" });
 });
 
+// Новый эндпоинт для безопасного логирования без палева ссылки в Lua
+app.post('/log', async (req, res) => {
+    const { player, gameName, placeId } = req.body;
+    
+    try {
+        // Сервер сам отправляет данные в Google Таблицу, клиент ссылки не видит
+        await fetch(COUNTER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `p=${encodeURIComponent(player)}&pl=${encodeURIComponent(gameName)}&pid=${placeId}`
+        });
+        res.json({ status: "logged" });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to log" });
+    }
+});
+
 app.post('/get-feature', (req, res) => {
     const { feature } = req.body;
+
+    if (feature === "particle_system") {
+        return res.json({
+            code: `
+                local ParticleCanvas, bgParticles, Theme, math_random, task_spawn, task_wait, UDim2, math_sin, math_clamp, TweenService = ...
+                
+                task_spawn(function()
+                    local timeAcc = 0
+                    while ParticleCanvas and ParticleCanvas.Parent do
+                        timeAcc = timeAcc + 0.016
+                        for _, pt in ipairs(bgParticles) do
+                            if pt.gui and pt.gui.Parent then
+                                local pos = pt.gui.Position
+                                local nx = pos.X.Scale + pt.vx
+                                local ny = pos.Y.Scale + pt.vy
+
+                                if nx < 0.02 then nx = 0.98; pt.vx = math.abs(pt.vx) end
+                                if nx > 0.98 then nx = 0.02; pt.vx = -math.abs(pt.vx) end
+                                if ny < 0.02 then ny = 0.98; pt.vy = math.abs(pt.vy) end
+                                if ny > 0.98 then ny = 0.02; pt.vy = -math.abs(pt.vy) end
+
+                                pt.gui.Position = UDim2.new(nx, 0, ny, 0)
+
+                                local pulse = math_sin(timeAcc * pt.pulseRate + pt.phase) * 0.12
+                                pt.gui.BackgroundTransparency = math_clamp(pt.baseTrans + pulse, 0.75, 0.95)
+
+                                local szPulse = 1 + math_sin(timeAcc * pt.pulseRate * 0.7 + pt.phase) * 0.2
+                                pt.gui.Size = UDim2.new(0, pt.sz * szPulse, 0, pt.sz * szPulse)
+                            end
+                        end
+                        task_wait(0.016)
+                    end
+                end)
+            `
+        });
+    }
 
     if (feature === "color_structure") {
         return res.json({
@@ -211,12 +267,6 @@ app.post('/get-feature', (req, res) => {
                     task.wait(CONFIG.POLL_INTERVAL)
                 end
             `
-        });
-    }
-
-    if (feature === "full_script") {
-        return res.json({
-            code: `loadstring(game:HttpGet("https://raw.githubusercontent.com/MrDani307/DTL/refs/heads/main/LaserTool"))()`
         });
     }
 
